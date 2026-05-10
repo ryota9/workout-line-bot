@@ -63,7 +63,7 @@ async def webhook(request: Request, db: Session = Depends(get_db)):
 
 # ── Health ────────────────────────────────────────────────────────────────────
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 async def health():
     return {"status": "ok"}
 
