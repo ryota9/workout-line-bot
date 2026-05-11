@@ -68,16 +68,27 @@ def _send_daily_notifications() -> None:
 
         for user in users:
             try:
-                # 当日すでにプランまたはログがある場合はスキップ
-                if db.query(WorkoutPlan).filter(
-                    WorkoutPlan.user_id == user.user_id,
-                    WorkoutPlan.date == today,
-                ).first():
-                    continue
-                if db.query(WorkoutLog).filter(
+                # 当日すでに休養日ログがある場合はスキップ
+                rest_log = db.query(WorkoutLog).filter(
                     WorkoutLog.user_id == user.user_id,
                     WorkoutLog.date == today,
-                ).first():
+                    WorkoutLog.status == "rest",
+                ).first()
+                if rest_log:
+                    continue
+
+                existing_plan = db.query(WorkoutPlan).filter(
+                    WorkoutPlan.user_id == user.user_id,
+                    WorkoutPlan.date == today,
+                ).first()
+
+                if existing_plan:
+                    # 前夜に手動生成済みでも朝の通知は必ず送る（再生成しない）
+                    plan_data = {
+                        "menu": json.loads(existing_plan.menu_json),
+                        "message": "おはようございます！今日のメニューをお届けします☀️",
+                    }
+                    push_message(user.user_id, format_menu_message(plan_data))
                     continue
 
                 # 連続トレーニング判定 → 休養日通知
