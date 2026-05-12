@@ -124,7 +124,10 @@ async def register_user(body: dict, db: Session = Depends(get_db)):
         name=body.get("name", "テストユーザー"),
         goal=body.get("goal", "体力維持"),
         level=body.get("level", "beginner"),
+        equipment=body.get("equipment", "bodyweight"),
         notify_time=body.get("notify_time", "07:00"),
+        onboarding_step=body.get("onboarding_step", "0"),
+        status=body.get("status", "active"),
     ))
     db.commit()
     return {"status": "created", "user_id": user_id}
