@@ -48,26 +48,38 @@ def _is_consecutive_training_days(db, user_id: str, today, min_days: int) -> boo
 
 
 def _send_daily_notifications() -> None:
-    """Generate AI menus and push to users whose notify_time matches the current minute."""
+    """Generate AI menus and push to users whose notify_time has passed today without a plan."""
     import datetime
     db = SessionLocal()
     try:
         now_jst = datetime.datetime.now(tz=datetime.timezone(datetime.timedelta(hours=9)))
         current_hhmm = now_jst.strftime("%H:%M")
-        today = date.today()
+        today = now_jst.date()  # サーバーがUTC環境でも正しいJST日付を使う
 
         users = (
             db.query(User)
             .filter(
                 User.status == "active",
                 User.onboarding_step == "complete",
-                User.notify_time == current_hhmm,
             )
             .all()
         )
 
         for user in users:
             try:
+                notify_time = user.notify_time or "07:00"
+
+                # notify_timeをまだ過ぎていない場合はスキップ
+                if current_hhmm < notify_time:
+                    continue
+
+                # notify_timeから2時間以上経過した場合もスキップ（寝坊防止）
+                nt_h, nt_m = map(int, notify_time.split(":"))
+                ct_h, ct_m = map(int, current_hhmm.split(":"))
+                minutes_past = (ct_h * 60 + ct_m) - (nt_h * 60 + nt_m)
+                if minutes_past > 120:
+                    continue
+
                 # 当日すでに休養日ログがある場合はスキップ
                 rest_log = db.query(WorkoutLog).filter(
                     WorkoutLog.user_id == user.user_id,
@@ -77,18 +89,12 @@ def _send_daily_notifications() -> None:
                 if rest_log:
                     continue
 
+                # 当日のプランがすでにある場合は通知済みとしてスキップ
                 existing_plan = db.query(WorkoutPlan).filter(
                     WorkoutPlan.user_id == user.user_id,
                     WorkoutPlan.date == today,
                 ).first()
-
                 if existing_plan:
-                    # 前夜に手動生成済みでも朝の通知は必ず送る（再生成しない）
-                    plan_data = {
-                        "menu": json.loads(existing_plan.menu_json),
-                        "message": "おはようございます！今日のメニューをお届けします☀️",
-                    }
-                    push_message(user.user_id, format_menu_message(plan_data))
                     continue
 
                 # 連続トレーニング判定 → 休養日通知
