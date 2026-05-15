@@ -18,8 +18,9 @@ from sqlalchemy.orm import Session
 
 from .models import User, UserDumbbellWeight, UserExercise, WorkoutLog, WorkoutPlan
 
+
 _JST = datetime.timezone(datetime.timedelta(hours=9))
-_DAY_CUTOFF_HOUR = 3  # 午前3時より前は前日扱い
+_DAY_CUTOFF_HOUR = 3  # 0〜2時台は前日扱い
 
 
 def get_logical_today() -> date:

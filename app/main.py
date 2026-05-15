@@ -35,6 +35,14 @@ app = FastAPI(title="Workout LINE Bot", lifespan=lifespan)
 
 # ── LINE Webhook ──────────────────────────────────────────────────────────────
 
+def _reply_with_fallback(reply_token: str, user_id: str, text: str) -> None:
+    """reply_message を試み、トークン期限切れなら push_message にフォールバック。"""
+    try:
+        reply_message(reply_token, text)
+    except Exception:
+        push_message(user_id, text)
+
+
 @app.post("/webhook")
 async def webhook(request: Request, db: Session = Depends(get_db)):
     body = await request.body()
@@ -51,12 +59,12 @@ async def webhook(request: Request, db: Session = Depends(get_db)):
         if event_type == "follow":
             reply_text = handle_follow(event, db)
             if reply_text:
-                reply_message(reply_token, reply_text)
+                _reply_with_fallback(reply_token, event["source"]["userId"], reply_text)
 
         elif event_type == "message" and event["message"]["type"] == "text":
             reply_text = handle_message(event, db)
             if reply_text:
-                reply_message(reply_token, reply_text)
+                _reply_with_fallback(reply_token, event["source"]["userId"], reply_text)
 
     return JSONResponse({"status": "ok"})
 
