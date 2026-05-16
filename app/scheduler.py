@@ -47,6 +47,19 @@ def _is_consecutive_training_days(db, user_id: str, today, min_days: int) -> boo
     return True
 
 
+def _fallback_plan() -> dict:
+    """Gemini が使えないときの固定フォールバックメニュー。"""
+    return {
+        "menu": [
+            {"exercise": "腕立て伏せ", "sets": 3, "reps": "10回", "weight_kg": None, "note": "肘を90度まで曲げる"},
+            {"exercise": "スクワット",  "sets": 3, "reps": "15回", "weight_kg": None, "note": "膝がつま先を超えないように"},
+            {"exercise": "プランク",    "sets": 3, "reps": "30秒", "weight_kg": None, "note": "体を一直線に保つ"},
+        ],
+        "message": "今日も一緒に頑張りましょう💪\n（AIが混み合っているため基本メニューをお届けします）",
+        "reason": "Gemini API エラーのためフォールバックメニューを使用",
+    }
+
+
 def _send_daily_notifications() -> None:
     """Generate AI menus and push to users whose notify_time has passed today without a plan."""
     import datetime
@@ -111,7 +124,11 @@ def _send_daily_notifications() -> None:
                     push_message(user.user_id, _MSG_AUTO_REST)
                     continue
 
-                plan_data = generate_daily_menu(db, user.user_id, today)
+                try:
+                    plan_data = generate_daily_menu(db, user.user_id, today)
+                except Exception as e:
+                    print(f"[scheduler] Gemini failed for {user.user_id}: {e}")
+                    plan_data = _fallback_plan()
 
                 db.add(WorkoutPlan(
                     user_id=user.user_id,
