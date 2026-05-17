@@ -129,23 +129,38 @@ def _get_recent_context(db: Session, user_id: str) -> dict:
 
 
 def generate_zero_activity_message(target_date: date) -> str:
-    """Generate a weekly bear-fight motivational story for users with no activity."""
+    """Generate a weekly bear-encounter story with 起承転結 for users with no activity."""
     week_num = target_date.isocalendar()[1]
     prompt = f"""あなたは筋トレ習慣化botのコピーライターです。
-週次レポートの代わりに送る激励メッセージを作ってください。
+週次レポートの代わりに送る、臨場感あるショートストーリーを作ってください。
 
-## 設定
-- 山の中で熊と対峙するユーザーの短編ストーリー（180〜220文字）
-- 今週（{target_date}・第{week_num}週）ならではの展開にすること（毎週異なる状況・季節・熊の種類・結末など）
-- ストーリーの最後に、筋トレを始めるための激励の一言で締めること
-- 全体250文字以内、絵文字は1〜2個まで
+## ストーリー構成（起承転結）
+- 【起】読者（=あなた）が山の中にいる日常シーンを描写する
+- 【承】黒い影・音・気配など、何かが近づく不穏な空気を演出する
+- 【転】巨大な熊が突如現れ、臨戦体制をとる。逃げ場はない
+- 【結】いざ立ち向かおうとした瞬間、腕に力が入らない。鍛えていなかったせいだ。筋トレを始めるよう促す一言で締める
+
+## ルール
+- 主語は「あなたは」で統一（二人称）
+- 今週（{target_date}・第{week_num}週）ならではの状況・季節感・熊の種類・ロケーションにすること（毎週変える）
+- 絵文字は1〜2個まで
+- 全体300〜380文字
+- セリフ・改行を活用してテンポよく読めるようにする
+
+## 参考トーン（こういう雰囲気）
+あなたは山奥に山菜取りに出かけています。今日は日々の疲れを癒やすための休暇の日です。
+そんな時、黒い影が視界の端を横切ります。ドサッという音と、太い息遣いが薮から聞こえてくる。
+あなたがふと顔を上げると——そこには巨大な熊が、まさに臨戦体制で立っていたのです。
+逃げ場はない。立ち向かうしかない。しかし、踏み出した足に力が入らない。
+「…鍛えていなかったのか」腕を構えようとした瞬間、情けないほど力が入らなかった。
+さあ、今日から筋トレを始めよう💪
 
 ## 出力形式（このJSONのみ返してください）
-{{"message": "ストーリー＋激励の一言"}}"""
+{{"message": "ストーリー本文"}}"""
 
     try:
         response = _get_client().models.generate_content(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash",
             contents=prompt,
         )
         text = response.text
@@ -155,9 +170,10 @@ def generate_zero_activity_message(target_date: date) -> str:
     except Exception as e:
         print(f"[ai_agent] bear story generation failed: {e}")
         return (
-            "山奥で巨大な熊と目が合った。逃げ場はない。\n"
-            "だが、鍛えた体があれば話は別だ。\n"
-            "「筋トレ」と送って、今週こそ戦いを始めよう💪"
+            "あなたは山奥に山菜取りに出かけていた。休暇のはずが、薮からドサッという音。\n"
+            "ふと顔を上げると——巨大な熊が臨戦体制で立っている。逃げ場はない。\n"
+            "立ち向かおうと腕を構えた瞬間、力が入らなかった。鍛えていなかったのだ。\n"
+            "さあ、今週こそ筋トレを始めよう💪「筋トレ」と送ってメニューを確認！"
         )
 
 
@@ -227,7 +243,7 @@ def generate_daily_menu(db: Session, user_id: str, target_date: date) -> dict:
 ```"""
 
     response = _get_client().models.generate_content(
-        model="gemini-1.5-flash",
+        model="gemini-2.5-flash",
         contents=prompt,
     )
     text = response.text
