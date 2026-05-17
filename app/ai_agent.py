@@ -160,7 +160,7 @@ def generate_zero_activity_message(target_date: date) -> str:
 
     try:
         response = _get_client().models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-2.0-flash",
             contents=prompt,
         )
         text = response.text
@@ -243,7 +243,7 @@ def generate_daily_menu(db: Session, user_id: str, target_date: date) -> dict:
 ```"""
 
     response = _get_client().models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-2.0-flash",
         contents=prompt,
     )
     text = response.text
