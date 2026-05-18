@@ -27,11 +27,35 @@ _DUMBBELL_SUGGEST_PERIOD_DAYS = 14
 
 _client: genai.Client | None = None
 
+# 試すモデルの優先順位（上から順に試し、成功したら使う）
+_MODELS = [
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-lite",
+    "gemini-2.5-flash",
+]
+
 def _get_client() -> genai.Client:
     global _client
     if _client is None:
         _client = genai.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
     return _client
+
+
+def _generate_with_fallback(prompt: str) -> str:
+    """複数モデルを順番に試し、最初に成功したレスポンスを返す。"""
+    last_error = None
+    for model in _MODELS:
+        try:
+            response = _get_client().models.generate_content(
+                model=model,
+                contents=prompt,
+            )
+            print(f"[ai_agent] model used: {model}")
+            return response.text
+        except Exception as e:
+            print(f"[ai_agent] {model} failed: {e}")
+            last_error = e
+    raise RuntimeError(f"All models failed. Last error: {last_error}")
 
 
 def _check_dumbbell_ready(db: Session, user_id: str, equipment: str) -> bool:
@@ -159,11 +183,7 @@ def generate_zero_activity_message(target_date: date) -> str:
 {{"message": "ストーリー本文"}}"""
 
     try:
-        response = _get_client().models.generate_content(
-            model="gemini-2.0-flash",
-            contents=prompt,
-        )
-        text = response.text
+        text = _generate_with_fallback(prompt)
         json_match = re.search(r"```json\s*(.*?)\s*```", text, re.DOTALL)
         raw = json_match.group(1) if json_match else text
         return json.loads(raw)["message"]
@@ -242,11 +262,7 @@ def generate_daily_menu(db: Session, user_id: str, target_date: date) -> dict:
 }}
 ```"""
 
-    response = _get_client().models.generate_content(
-        model="gemini-2.0-flash",
-        contents=prompt,
-    )
-    text = response.text
+    text = _generate_with_fallback(prompt)
     json_match = re.search(r"```json\s*(.*?)\s*```", text, re.DOTALL)
     raw = json_match.group(1) if json_match else text
 
